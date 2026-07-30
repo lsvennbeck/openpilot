@@ -41,6 +41,7 @@ bin/
 *.stats
 *.pkl
 *.pkl*
+!sunnypilot/models/local_models/*.pkl*
 config.json
 compile_commands.json
 compare_runtime*.html

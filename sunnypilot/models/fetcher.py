@@ -7,7 +7,9 @@ See the LICENSE.md file in the root directory for more details.
 
 import json
 import os
+import shutil
 import time
+from pathlib import Path
 
 import requests
 from requests.exceptions import (SSLError, RequestException, HTTPError)
@@ -19,6 +21,31 @@ from openpilot.sunnypilot.models.helpers import is_bundle_version_compatible
 from cereal import custom
 
 LOCAL_BUNDLES_FILENAME = "local_bundles.json"
+
+# Models shipped directly in this repo (not gitignored, see .gitignore's
+# !sunnypilot/models/local_models/*.pkl* exception) get auto-copied into
+# Paths.model_root() the first time they're missing there, so they're
+# selectable without any manual device-side file transfer.
+BUNDLED_MODELS_DIR = Path(__file__).parent / "local_models"
+BUNDLED_CATALOG_FILENAME = "catalog.json"
+
+
+def _dest_exists(dest_dir: str, file_name: str) -> bool:
+  return (os.path.isfile(os.path.join(dest_dir, f"{file_name}.chunkmanifest")) or
+          os.path.isfile(os.path.join(dest_dir, file_name)))
+
+
+def _copy_chunked_or_plain(src_dir: Path, dest_dir: str, file_name: str) -> None:
+  """Copies file_name (and its .chunk*/.chunkmanifest siblings if chunked) from src_dir into dest_dir."""
+  manifest_src = src_dir / f"{file_name}.chunkmanifest"
+  if manifest_src.is_file():
+    num_chunks = int(manifest_src.read_text().strip())
+    for i in range(num_chunks):
+      chunk_name = f"{file_name}.chunk{i + 1:02d}of{num_chunks:02d}"
+      shutil.copyfile(src_dir / chunk_name, os.path.join(dest_dir, chunk_name))
+    shutil.copyfile(manifest_src, os.path.join(dest_dir, f"{file_name}.chunkmanifest"))
+  else:
+    shutil.copyfile(src_dir / file_name, os.path.join(dest_dir, file_name))
 
 
 class ModelParser:
@@ -159,15 +186,55 @@ class ModelFetcher:
 
     return None
 
+  def _materialize_bundled_models(self) -> None:
+    """
+    Copies any models shipped directly in the repo (sunnypilot/models/local_models/)
+    into Paths.model_root() the first time they're missing there, and installs their
+    catalog as local_bundles.json. This is what makes repo-bundled models (e.g. Hot
+    Coffee) show up as selectable after just a git clone, with no device-side file
+    transfer step. Cheap to call every loop: skips existing files via a stat check.
+    """
+    catalog_src = BUNDLED_MODELS_DIR / BUNDLED_CATALOG_FILENAME
+    if not catalog_src.is_file():
+      return
+    try:
+      with open(catalog_src) as f:
+        json_data = json.load(f)
+    except Exception as e:
+      cloudlog.warning(f"Failed to parse bundled models catalog {catalog_src}: {e}")
+      return
+
+    dest_dir = Paths.model_root()
+    os.makedirs(dest_dir, exist_ok=True)
+
+    for bundle in json_data.get("bundles", []):
+      for model in bundle.get("models", []):
+        for artifact in (model.get("artifact"), model.get("metadata")):
+          file_name = (artifact or {}).get("file_name")
+          if not file_name or _dest_exists(dest_dir, file_name):
+            continue
+          try:
+            _copy_chunked_or_plain(BUNDLED_MODELS_DIR, dest_dir, file_name)
+            cloudlog.warning(f"Installed bundled model file {file_name} into {dest_dir}")
+          except Exception as e:
+            cloudlog.warning(f"Failed to install bundled model file {file_name}: {e}")
+
+    dest_catalog = os.path.join(dest_dir, LOCAL_BUNDLES_FILENAME)
+    if not os.path.isfile(dest_catalog):
+      shutil.copyfile(catalog_src, dest_catalog)
+
   def _get_local_bundles(self) -> list[custom.ModelManagerSP.ModelBundle]:
     """
-    Loads bundles from an optional user-authored local catalog (same schema as the
-    remote catalog: {"bundles": [...]}), so locally-built models can be made
-    selectable without needing to be published to the remote sunnypilot-models repo.
+    Loads bundles from an optional local catalog (same schema as the remote catalog:
+    {"bundles": [...]}), so locally-built models can be made selectable without
+    needing to be published to the remote sunnypilot-models repo. This includes both
+    models materialized from the repo's bundled sunnypilot/models/local_models/ and
+    any user-authored catalog placed directly in Paths.model_root().
     Missing file is the normal case and is silent; malformed file is logged and ignored.
     Local bundle authors are responsible for using `index` values that don't collide
     with the remote catalog.
     """
+    self._materialize_bundled_models()
     local_path = os.path.join(Paths.model_root(), LOCAL_BUNDLES_FILENAME)
     if not os.path.isfile(local_path):
       return []

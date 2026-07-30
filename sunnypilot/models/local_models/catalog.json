@@ -1,0 +1,37 @@
+{
+  "bundles": [
+    {
+      "index": 9001,
+      "short_name": "HOTCOFFEE",
+      "display_name": "Hot Coffee (openpilot 0.9.3, July 2023)",
+      "generation": "0",
+      "environment": "local",
+      "runner": "tinygrad",
+      "is_20hz": false,
+      "minimum_selector_version": "15",
+      "overrides": {
+        "metaClass": "hotcoffee"
+      },
+      "ref": "openpilot-v0.9.3-supercombo",
+      "models": [
+        {
+          "type": "supercombo",
+          "artifact": {
+            "file_name": "driving_hotcoffee_tinygrad.pkl",
+            "download_uri": {
+              "url": "",
+              "sha256": "464e6c2d42703512237c0c8751fba92ab77dcbf326cc44982fa8f1d95b57d9a6"
+            }
+          },
+          "metadata": {
+            "file_name": "driving_hotcoffee_metadata.pkl",
+            "download_uri": {
+              "url": "",
+              "sha256": "4d515b85ada5133040b41f17ea50e73cb3d85ccfcb2e434229653fb712b76ac9"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
