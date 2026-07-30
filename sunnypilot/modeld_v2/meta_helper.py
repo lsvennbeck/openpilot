@@ -1,4 +1,4 @@
-from openpilot.sunnypilot.modeld_v2.constants import Meta, MetaHotCoffee
+from openpilot.sunnypilot.modeld_v2.constants import Meta, MetaV0814
 from cereal import custom
 from openpilot.sunnypilot.modeld_v2.meta_20hz import Meta20hz
 from openpilot.sunnypilot.models.helpers import get_active_bundle
@@ -16,7 +16,7 @@ def load_meta_constants():
       details such as input shapes, output slices, and other configurations for identifying
       metadata-dependent meta model classes.
   :type model_metadata: dict
-  :return: The appropriate meta model class (Meta, MetaHotCoffee, or Meta20hz)
+  :return: The appropriate meta model class (Meta, MetaV0814, or Meta20hz)
       based on the conditions and metadata provided.
   :rtype: type
   """
@@ -24,7 +24,7 @@ def load_meta_constants():
     if bundle.is20hz:
       return Meta20hz
     overrides = {override.key: override.value for override in bundle.overrides}
-    if overrides.get('metaClass') == 'hotcoffee':
-      return MetaHotCoffee
+    if overrides.get('metaClass') == 'v0814':
+      return MetaV0814
 
   return Meta  # Default

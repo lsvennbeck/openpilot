@@ -83,10 +83,10 @@ class Meta:
   LEFT_BLINKER = slice(33, 55, 4)
   RIGHT_BLINKER = slice(34, 55, 4)
 
-class MetaHotCoffee:
+class MetaV0814:
   """
-  Meta layout for the openpilot 0.9.3-era "Hot Coffee" supercombo (48-wide raw meta
-  block, array-of-structs layout: engaged, then 5x[gas_dis, brake_dis, steer_ov,
+  Meta layout for the openpilot v0.8.14 supercombo (48-wide raw meta block,
+  array-of-structs layout: engaged, then 5x[gas_dis, brake_dis, steer_ov,
   hb3, hb4, hb5, gas_pressed], then 6x[left_blinker, right_blinker]). This predates
   the interleaved layout `Meta` expects and is not slice-compatible with it.
   """

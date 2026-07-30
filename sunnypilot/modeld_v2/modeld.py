@@ -93,6 +93,11 @@ class ModelState(ModelStateBase):
     self.MIN_LAT_CONTROL_SPEED = 0.3
     self.PLANPLUS_CONTROL: float = 1.0
 
+    self._laneful_curvature = None
+    if overrides.get('lateralMode') == 'laneful':
+      from openpilot.sunnypilot.modeld_v2.lane_planner import LanefulCurvature
+      self._laneful_curvature = LanefulCurvature()
+
     pkl_path = _find_driving_pkl(model_bundle)
     assert pkl_path is not None, "No driving pkl found — all models must be compiled with compile_modeld.py"
     self._init_combined(pkl_path, cam_w, cam_h, model_bundle)
@@ -142,7 +147,9 @@ class ModelState(ModelStateBase):
 
     from openpilot.sunnypilot.modeld_v2.parse_model_outputs_split import Parser as SplitParser
     from openpilot.sunnypilot.modeld_v2.parse_model_outputs import Parser as CombinedParser
-    self.parser = SplitParser() if self._combined_model_type != 'supercombo' else CombinedParser()
+    # ignore_missing: older supercombo models predate some output heads (e.g. road_transform,
+    # wide_from_device_euler) that this parser otherwise treats as required.
+    self.parser = SplitParser() if self._combined_model_type != 'supercombo' else CombinedParser(ignore_missing=True)
 
     is_20hz = bundle.is20hz if bundle else self._combined_model_type in ('split', 'multi_policy')
     if is_20hz:
@@ -246,7 +253,10 @@ class ModelState(ModelStateBase):
     desired_accel = smooth_value(desired_accel, prev_action.desiredAcceleration, self.LONG_SMOOTH_SECONDS)
 
     curvature_plan = plan + (self.PLANPLUS_CONTROL - 1.0) * model_output['planplus'][0] if 'planplus' in model_output and self.PLANPLUS_CONTROL != 1.0 else plan
-    desired_curvature = get_curvature_from_output(model_output, curvature_plan, v_ego, lat_action_t, self.mlsim)
+    if self._laneful_curvature is not None:
+      desired_curvature = self._laneful_curvature.get_curvature(model_output, curvature_plan, v_ego, lat_action_t, prev_action.desiredCurvature)
+    else:
+      desired_curvature = get_curvature_from_output(model_output, curvature_plan, v_ego, lat_action_t, self.mlsim)
     if self.generation is not None and self.generation >= 10: # smooth curvature for post FOF models
       if v_ego > self.MIN_LAT_CONTROL_SPEED:
         desired_curvature = smooth_value(desired_curvature, prev_action.desiredCurvature, self.LAT_SMOOTH_SECONDS)

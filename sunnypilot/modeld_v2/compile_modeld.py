@@ -207,7 +207,13 @@ def make_supercombo_input_queues(input_shapes, frame_skip, device):
       else:
         numpy_keys[key] = np.zeros(shape, dtype=np.float32)
     elif len(shape) == 2:
-      numpy_keys[key] = np.zeros(shape, dtype=np.float32)
+      if key == 'initial_state':
+        # Older (pre-features_buffer) supercombo models carry temporal context as a single
+        # flat recurrent state vector fed back from the model's own previous-frame output,
+        # rather than a windowed multi-frame history buffer.
+        queue_keys['state_q'] = Tensor(np.zeros(shape, dtype=np.float32), device=device).contiguous().realize()
+      else:
+        numpy_keys[key] = np.zeros(shape, dtype=np.float32)
 
   if 'traffic_convention' not in numpy_keys:
     tc_shape = input_shapes.get('traffic_convention', (1, 2))
@@ -235,12 +241,17 @@ def make_run_supercombo(model_runner, nv12: NV12Frame, model_w, model_h,
   if desire_key is None:
     raise ValueError(f"No desire* key found in input_shapes: {list(input_shapes.keys())}")
   road_img_key, wide_img_key = _detect_vision_keys(input_shapes)
+  has_features_buffer = 'features_buffer' in input_shapes
+  has_initial_state = 'initial_state' in input_shapes
+  # Older models take an instantaneous one-hot desire vector rather than a windowed
+  # multi-frame history buffer -- only the latter gets queue/shift_and_sample treatment.
+  has_desire_buffer = len(input_shapes.get(desire_key, ())) == 3
   extra_policy_keys = [k for k in input_shapes
-                       if k not in (desire_key, 'features_buffer', 'traffic_convention')
+                       if k not in (desire_key, 'features_buffer', 'initial_state', 'traffic_convention')
                        and 'img' not in k]
 
-  def run_supercombo(img_q, big_img_q, feat_q, desire_q,
-                     frame, big_frame, **kwargs):
+  def run_supercombo(img_q, big_img_q,
+                     frame, big_frame, desire_q=None, feat_q=None, state_q=None, **kwargs):
     desire = kwargs.get(desire_key)
     traffic_convention = kwargs.get('traffic_convention')
     tfm = kwargs['tfm']
@@ -258,20 +269,28 @@ def make_run_supercombo(model_runner, nv12: NV12Frame, model_w, model_h,
     if prepare_only:
       return img, big_img
 
-    desire_buf = shift_and_sample(desire_q, desire.reshape(1, 1, -1), sample_desire_fn)
-    feat_buf = sample_skip_fn(feat_q)
+    if has_desire_buffer:
+      desire_buf = shift_and_sample(desire_q, desire.reshape(1, 1, -1), sample_desire_fn)
+    else:
+      desire_buf = desire
 
     inputs = {road_img_key: img, wide_img_key: big_img,
-              desire_key: desire_buf, 'features_buffer': feat_buf,
-              'traffic_convention': traffic_convention}
+              desire_key: desire_buf, 'traffic_convention': traffic_convention}
+    if has_features_buffer:
+      inputs['features_buffer'] = sample_skip_fn(feat_q)
+    if has_initial_state:
+      inputs['initial_state'] = state_q
     for k in extra_policy_keys:
       if k in kwargs:
         inputs[k] = kwargs[k].to(Device.DEFAULT)
 
     model_out = next(iter(model_runner(inputs).values())).cast('float32')
 
-    new_feat = model_out[:, features_slice].reshape(1, -1).unsqueeze(0)
-    shift_and_sample(feat_q, new_feat, sample_skip_fn)
+    new_feat = model_out[:, features_slice]
+    if has_features_buffer:
+      shift_and_sample(feat_q, new_feat.reshape(1, -1).unsqueeze(0), sample_skip_fn)
+    if has_initial_state:
+      state_q.assign(new_feat.reshape(state_q.shape).contiguous()).realize()
 
     return model_out
 
