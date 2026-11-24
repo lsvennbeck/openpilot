@@ -4,7 +4,7 @@ from functools import lru_cache
 from capnp.lib.capnp import _DynamicStructBuilder, _DynamicStructReader
 
 from opendbc.car.structs import CarParams
-from opendbc.car.hyundai.values import CAR, HyundaiFlags
+from opendbc.car.hyundai.values import CAR, HyundaiFlags, KIA_EV6_VARIANTS
 
 # Integer masks avoid constructing IntFlag objects in live 100 Hz admission checks.
 _FLAG_CANFD = HyundaiFlags.CANFD.value
@@ -29,7 +29,7 @@ def topology_index(cp):
   if len(cp.safetyConfigs) != 2:
     return None
   auxiliary, owner = cp.safetyConfigs
-  if (cp.brand != 'hyundai' or cp.carFingerprint not in (CAR.KIA_EV6, CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN) or
+  if (cp.brand != 'hyundai' or cp.carFingerprint not in (KIA_EV6_VARIANTS | {CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN}) or
       cp.passive or cp.dashcamOnly or cp.notCar or cp.steerControlType != CarParams.SteerControlType.torque or
       int(cp.flags) & _REQUIRED != _REQUIRED or int(cp.flags) & _EXCLUDED or
       auxiliary.safetyModel != CarParams.SafetyModel.noOutput or auxiliary.safetyParam != 0 or
@@ -61,7 +61,7 @@ def _config_index_uncached(cp):
     word = 0x2015 if cp.carFingerprint == CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN else 0x15
     if raw == word and cp.alternativeExperience == 0:
       return 1
-    if cp.carFingerprint in (CAR.KIA_EV6, CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN) and raw == (word | 0x800) and cp.alternativeExperience == 32:
+    if cp.carFingerprint in (KIA_EV6_VARIANTS | {CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN}) and raw == (word | 0x800) and cp.alternativeExperience == 32:
       return 1
   elif not cp.openpilotLongitudinalControl and cp.pcmCruise and cp.alternativeExperience == 0 and raw in (0x11, 0x811):
     return 1
