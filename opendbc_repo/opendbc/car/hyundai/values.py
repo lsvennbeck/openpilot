@@ -786,11 +786,7 @@ class CAR(Platforms):
     flags=HyundaiFlags.LEGACY | HyundaiFlags.HYBRID,
   )
   KIA_EV6 = HyundaiCanFDPlatformConfig(
-    [
-      HyundaiCarDocs("Lars Kia EV6 (Southeast Asia only) 2022-24", "All", car_parts=CarParts.common([CarHarness.hyundai_p])),
-      HyundaiCarDocs("Lars Kia EV6 (without HDA II) 2022-24", "Highway Driving Assist", car_parts=CarParts.common([CarHarness.hyundai_l])),
-      HyundaiCarDocs("Lars Kia EV6 (with HDA II) 2022-24", "Highway Driving Assist II", car_parts=CarParts.common([CarHarness.hyundai_p]))
-    ],
+    [HyundaiCarDocs("Lars EV6 2023", "All", car_parts=CarParts.common([CarHarness.hyundai_p]))],
     CarSpecs(mass=2055, wheelbase=2.9, steerRatio=16, tireStiffnessFactor=0.65),
     flags=HyundaiFlags.EV,
     radar_dbc=HYUNDAI_MRR30_RADAR_DBC,
@@ -1090,6 +1086,9 @@ PART_NUMBER_FW_PATTERN = re.compile(b'(?<=[0-9][.,][0-9]{2} )([0-9]{5}[-/]?[A-Z]
 CANFD_FUZZY_WHITELIST = {CAR.KIA_SORENTO_4TH_GEN, CAR.KIA_SORENTO_HEV_4TH_GEN, CAR.KIA_K8_HEV_1ST_GEN,
                          # TODO: the hybrid variant is not out yet
                          CAR.KIA_CARNIVAL_4TH_GEN}
+
+# All Kia EV6 2022-24 variants (auto-detected + manual selection entries)
+KIA_EV6_VARIANTS = {CAR.KIA_EV6}
 
 # List of ECUs expected to have platform codes, camera and radar should exist on all cars
 # TODO: use abs, it has the platform code and part number on many platforms
