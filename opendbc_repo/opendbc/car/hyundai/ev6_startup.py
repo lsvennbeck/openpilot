@@ -7,11 +7,11 @@ from opendbc.car.hyundai.ecu_startup import HyundaiECUStartup, Outcome
 from opendbc.car.hyundai.canfd_owner import config_index
 from opendbc.car.hyundai.captured_adrv_startup import CapturedADRVStartup, first_generation
 from opendbc.car.hyundai.ev6_template import EV6Template
-from opendbc.car.hyundai.values import CAR
+from opendbc.car.hyundai.values import CAR, KIA_EV6_VARIANTS
 
 
 def eligible(cp):
-  return cp.carFingerprint == CAR.KIA_EV6 and first_generation(cp)
+  return cp.carFingerprint in KIA_EV6_VARIANTS and first_generation(cp)
 
 
 def required(cp):
