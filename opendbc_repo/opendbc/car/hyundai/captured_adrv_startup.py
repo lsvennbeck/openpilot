@@ -6,7 +6,7 @@ from opendbc.can.parser import MAX_BAD_COUNTER
 from opendbc.car.hyundai.ecu_startup import Outcome
 from opendbc.car.hyundai.ecu_continuity import ContinuousECUStartup
 from opendbc.car.hyundai.hyundaicanfd import CanBus
-from opendbc.car.hyundai.values import CAR, HyundaiFlags
+from opendbc.car.hyundai.values import CAR, HyundaiFlags, KIA_EV6_VARIANTS
 from opendbc.car.hyundai.canfd_owner import topology_index
 
 # Integer masks avoid constructing IntFlag objects in live 100 Hz admission checks.
@@ -47,7 +47,7 @@ class CapturedADRVStartup(ContinuousECUStartup):
     self.template = None
 
   def continuity_required(self):
-    return (self.cp.carFingerprint in (CAR.KIA_EV6, CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN) and
+    return (self.cp.carFingerprint in (KIA_EV6_VARIANTS | {CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN}) and
             self.cp.openpilotLongitudinalControl and first_generation(self.cp))
 
   def _capture(self):
