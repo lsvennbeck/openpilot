@@ -6,7 +6,7 @@ from opendbc.car.hyundai.canfd_stock_aol import GENERIC_HDA2_CARS as CARS, quali
 from opendbc.car.hyundai.ecu_continuity import ContinuousECUStartup, StartupKeeper
 from opendbc.car.hyundai.ecu_startup import Outcome, stock_copy
 from opendbc.car.hyundai.radar_hda2_startup import RadarHDA2Startup
-from opendbc.car.hyundai.values import CAR, HyundaiFlags, is_blended
+from opendbc.car.hyundai.values import CAR, HyundaiFlags, is_blended, KIA_EV6_VARIANTS
 
 EXISTING_OWNERS_OR_DISTINCT_RECEIVERS = frozenset((
   CAR.HYUNDAI_KONA_EV_2ND_GEN,
