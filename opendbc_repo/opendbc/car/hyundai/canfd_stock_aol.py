@@ -1,7 +1,7 @@
 """AOL admission for the ordinary CAN FD torque and physical-button layouts."""
 
 from opendbc.car.structs import CarParams
-from opendbc.car.hyundai.values import CAR, HyundaiFlags
+from opendbc.car.hyundai.values import CAR, HyundaiFlags, KIA_EV6_VARIANTS
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 from opendbc.car.hyundai.canfd_owner import config_index
 
@@ -144,13 +144,14 @@ GENERIC_HDA2_CARS = frozenset((
 ))
 
 INDEPENDENT_LONG_BUTTON_CARS = LONG_EV_CARS | GENERIC_HDA2_CARS | {
-  CAR.KIA_EV6, CAR.KIA_NIRO_EV_2ND_GEN, CAR.HYUNDAI_IONIQ_6, CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN,
+  CAR.KIA_EV6,
+  CAR.KIA_NIRO_EV_2ND_GEN, CAR.HYUNDAI_IONIQ_6, CAR.GENESIS_GV70_ELECTRIFIED_1ST_GEN,
   CAR.GENESIS_GV60_EV_1ST_GEN, CAR.KIA_SPORTAGE_5TH_GEN, CAR.KIA_CARNIVAL_2025,
 }
 
 
 def qualified_long(cp, *, marked_only=False):
-  if cp.carFingerprint == CAR.KIA_EV6 and int(cp.flags) & _FLAG_CANFD_LKA_STEER_MSG:
+  if cp.carFingerprint in KIA_EV6_VARIANTS and int(cp.flags) & _FLAG_CANFD_LKA_STEER_MSG:
     from opendbc.car.hyundai.ev6_aol import qualified as ev6_qualified
     return ev6_qualified(cp, marked_only=marked_only)
   if cp.carFingerprint not in INDEPENDENT_LONG_BUTTON_CARS or not cp.openpilotLongitudinalControl or cp.pcmCruise:
@@ -160,7 +161,7 @@ def qualified_long(cp, *, marked_only=False):
     if not eligible(cp):
       return False
   word = _base_word(cp, experiences=(0, 32))
-  if cp.carFingerprint in (CAR.KIA_EV6, CAR.GENESIS_GV60_EV_1ST_GEN, CAR.HYUNDAI_IONIQ_6):
+  if cp.carFingerprint in KIA_EV6_VARIANTS or cp.carFingerprint in (CAR.GENESIS_GV60_EV_1ST_GEN, CAR.HYUNDAI_IONIQ_6):
     if word != 0x09:
       return False
   elif cp.carFingerprint == CAR.KIA_SPORTAGE_5TH_GEN:
